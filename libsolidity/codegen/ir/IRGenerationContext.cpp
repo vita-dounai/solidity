@@ -144,23 +144,7 @@ string IRGenerationContext::newYulVariable()
 
 string IRGenerationContext::variable(Expression const& _expression)
 {
-	unsigned size = _expression.annotation().type->sizeOnStack();
-	if (
-		auto const* arrayType = dynamic_cast<ReferenceType const*>(_expression.annotation().type);
-		arrayType && arrayType->location() == DataLocation::CallData && arrayType->isDynamicallySized()
-	)
-	{
-		solAssert(size == 2, "");
-		return variablePart(_expression, "offset") + ", " + variablePart(_expression, "length");
-	}
-	else
-	{
-		string var = "expr_" + to_string(_expression.id());
-		if (size == 1)
-			return var;
-		else
-			return suffixedVariableNameList(move(var) + "_", 1, 1 + size);
-	}
+	return joinHumanReadable(_expression.annotation().type->stackSlotNames("expr_" + to_string(_expression.id())));
 }
 
 string IRGenerationContext::variablePart(Expression const& _expression, string const& _part)
