@@ -137,10 +137,13 @@ string IRGenerator::generateFunction(FunctionDefinition const& _function)
 			}
 		)");
 		t("functionName", functionName);
-		string params;
+		vector<string> params;
 		for (auto const& varDecl: _function.parameters())
-			params += (params.empty() ? "" : ", ") + m_context.addLocalVariable(*varDecl);
-		t("params", params);
+			if (varDecl->annotation().type->dataStoredIn(DataLocation::CallData))
+				params += m_context.addCalldataVariable(*varDecl);
+			else
+				params.emplace_back(m_context.addLocalVariable(*varDecl));
+		t("params", joinHumanReadable(params));
 		string retParams;
 		for (auto const& varDecl: _function.returnParameters())
 			retParams += (retParams.empty() ? "" : ", ") + m_context.addLocalVariable(*varDecl);

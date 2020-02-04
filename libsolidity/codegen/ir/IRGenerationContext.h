@@ -66,6 +66,11 @@ public:
 	bool isLocalVariable(VariableDeclaration const& _varDecl) const { return m_localVariables.count(&_varDecl); }
 	std::string localVariableName(VariableDeclaration const& _varDecl);
 
+	std::vector<std::string> addCalldataVariable(VariableDeclaration const& _varDecl);
+	bool isCalldataVariable(VariableDeclaration const& _varDecl) const { return m_calldataVariables.count(&_varDecl); }
+	std::string calldataVariableOffset(VariableDeclaration const& _varDecl);
+	std::string calldataVariableLength(VariableDeclaration const& _varDecl);
+
 	void addStateVariable(VariableDeclaration const& _varDecl, u256 _storageOffset, unsigned _byteOffset);
 	bool isStateVariable(VariableDeclaration const& _varDecl) const { return m_stateVariables.count(&_varDecl); }
 	std::pair<u256, unsigned> storageLocationOfVariable(VariableDeclaration const& _varDecl) const
@@ -97,6 +102,7 @@ private:
 	OptimiserSettings m_optimiserSettings;
 	std::vector<ContractDefinition const*> m_inheritanceHierarchy;
 	std::map<VariableDeclaration const*, std::string> m_localVariables;
+	std::map<VariableDeclaration const*, std::vector<std::string>> m_calldataVariables;
 	/// Storage offsets of state variables
 	std::map<VariableDeclaration const*, std::pair<u256, unsigned>> m_stateVariables;
 	std::shared_ptr<MultiUseYulFunctionCollector> m_functions;

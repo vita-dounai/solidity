@@ -50,6 +50,50 @@ string IRGenerationContext::localVariableName(VariableDeclaration const& _varDec
 	return m_localVariables[&_varDecl];
 }
 
+vector<string> IRGenerationContext::addCalldataVariable(VariableDeclaration const& _varDecl)
+{
+	auto const* referenceType = dynamic_cast<ReferenceType const*>(_varDecl.annotation().type);
+	solAssert(referenceType && referenceType->location() == DataLocation::CallData, "");
+	string baseName = "vloc_" + _varDecl.name() + "_" + to_string(_varDecl.id());
+	if (referenceType->isDynamicallySized())
+		return m_calldataVariables[&_varDecl] = {baseName + "_offset", baseName + "_length"};
+	else
+		return m_calldataVariables[&_varDecl] = {baseName + "_offset"};
+}
+
+string IRGenerationContext::calldataVariableOffset(VariableDeclaration const& _varDecl)
+{
+	solAssert(
+		m_calldataVariables.count(&_varDecl),
+		"Unknown calldata variable: " + _varDecl.name()
+	);
+	auto const& variables = m_calldataVariables[&_varDecl];
+	solAssert(!variables.empty(), "");
+	return variables.front();
+}
+
+
+string IRGenerationContext::calldataVariableLength(VariableDeclaration const& _varDecl)
+{
+	auto const* arrayType = dynamic_cast<ArrayType const*>(_varDecl.annotation().type);
+	solAssert(
+		arrayType && arrayType->location() == DataLocation::CallData,
+		""
+	);
+	solAssert(
+		m_calldataVariables.count(&_varDecl),
+		"Unknown calldata variable: " + _varDecl.name()
+	);
+	if (arrayType->isDynamicallySized())
+	{
+		auto const& variables = m_calldataVariables[&_varDecl];
+		solAssert(variables.size() == 2, "");
+		return variables.back();
+	}
+	else
+		return toCompactHexWithPrefix(arrayType->length());
+}
+
 void IRGenerationContext::addStateVariable(
 	VariableDeclaration const& _declaration,
 	u256 _storageOffset,
@@ -101,11 +145,22 @@ string IRGenerationContext::newYulVariable()
 string IRGenerationContext::variable(Expression const& _expression)
 {
 	unsigned size = _expression.annotation().type->sizeOnStack();
-	string var = "expr_" + to_string(_expression.id());
-	if (size == 1)
-		return var;
+	if (
+		auto const* arrayType = dynamic_cast<ReferenceType const*>(_expression.annotation().type);
+		arrayType && arrayType->location() == DataLocation::CallData && arrayType->isDynamicallySized()
+	)
+	{
+		solAssert(size == 2, "");
+		return variablePart(_expression, "offset") + ", " + variablePart(_expression, "length");
+	}
 	else
-		return suffixedVariableNameList(move(var) + "_", 1, 1 + size);
+	{
+		string var = "expr_" + to_string(_expression.id());
+		if (size == 1)
+			return var;
+		else
+			return suffixedVariableNameList(move(var) + "_", 1, 1 + size);
+	}
 }
 
 string IRGenerationContext::variablePart(Expression const& _expression, string const& _part)

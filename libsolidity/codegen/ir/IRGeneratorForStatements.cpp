@@ -790,7 +790,10 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 		else if (member == "gasprice")
 			defineExpression(_memberAccess) << "gasprice()\n";
 		else if (member == "data")
-			solUnimplementedAssert(false, "");
+		{
+			defineExpressionPart(_memberAccess, "offset") << "0\n";
+			defineExpressionPart(_memberAccess, "length") << "calldatasize()\n";
+		}
 		else if (member == "sig")
 			defineExpression(_memberAccess) <<
 				"and(calldataload(0), " <<
@@ -837,8 +840,7 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 				switch (type.location())
 				{
 					case DataLocation::CallData:
-						solUnimplementedAssert(false, "");
-						//m_context << Instruction::SWAP1 << Instruction::POP;
+						defineExpression(_memberAccess) << m_context.variablePart(_memberAccess.expression(), "length") << "\n";
 						break;
 					case DataLocation::Storage:
 					{
@@ -978,8 +980,30 @@ void IRGeneratorForStatements::endVisit(IndexAccess const& _indexAccess)
 			}
 			case DataLocation::CallData:
 			{
-				solUnimplemented("calldata not yet implemented!");
-
+				vector<string> vars { m_context.newYulVariable() };
+				if (arrayType.baseType()->isDynamicallySized())
+					vars.emplace_back(m_context.newYulVariable());
+				m_code << "let " <<
+					joinHumanReadable(vars) <<
+					" := " <<
+					m_utils.calldataArrayIndexAccessFunction(arrayType) <<
+					"(" <<
+					m_context.variable(_indexAccess.baseExpression()) <<
+					", " <<
+					expressionAsType(*_indexAccess.indexExpression(), *TypeProvider::uint256()) <<
+					")\n";
+				if (arrayType.isByteArray())
+					defineExpression(_indexAccess) << m_utils.conversionFunction(*arrayType.baseType(), *arrayType.baseType()) << "(calldataload(" << vars.front() << "))\n";
+				else if (arrayType.baseType()->isValueType())
+					defineExpression(_indexAccess) << m_utils.readFromCalldata(*arrayType.baseType()) << "(" << vars.front() << ")\n";
+				else if (arrayType.baseType()->sizeOnStack() > 1)
+				{
+					defineExpressionPart(_indexAccess, "offset") << vars.front() << "\n";
+					defineExpressionPart(_indexAccess, "length") << vars.back() << "\n";
+				}
+				else
+					defineExpression(_indexAccess) << vars.front() << "\n";
+				break;
 			}
 		}
 	}
@@ -1033,15 +1057,22 @@ void IRGeneratorForStatements::endVisit(Identifier const& _identifier)
 		// If the value is visited twice, `defineExpression` is called twice on
 		// the same expression.
 		solUnimplementedAssert(!varDecl->isConstant(), "");
-		unique_ptr<IRLValue> lvalue;
 		if (m_context.isLocalVariable(*varDecl))
-			lvalue = make_unique<IRLocalVariable>(m_context, *varDecl);
+			setLValue(_identifier, make_unique<IRLocalVariable>(m_context, *varDecl));
 		else if (m_context.isStateVariable(*varDecl))
-			lvalue = make_unique<IRStorageItem>(m_context, *varDecl);
+			setLValue(_identifier, make_unique<IRStorageItem>(m_context, *varDecl));
+		else if (m_context.isCalldataVariable(*varDecl))
+		{
+			if (varDecl->annotation().type->isDynamicallySized())
+			{
+				defineExpressionPart(_identifier, "offset") << m_context.calldataVariableOffset(*varDecl) << "\n";
+				defineExpressionPart(_identifier, "length") << m_context.calldataVariableLength(*varDecl) << "\n";
+			}
+			else
+				defineExpression(_identifier) << m_context.calldataVariableOffset(*varDecl) << "\n";
+		}
 		else
 			solAssert(false, "Invalid variable kind.");
-
-		setLValue(_identifier, move(lvalue));
 	}
 	else if (auto contract = dynamic_cast<ContractDefinition const*>(declaration))
 	{
