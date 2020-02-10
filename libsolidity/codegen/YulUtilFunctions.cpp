@@ -1981,3 +1981,24 @@ string YulUtilFunctions::revertReasonIfDebug(string const& _message)
 {
 	return revertReasonIfDebug(m_revertStrings, _message);
 }
+
+string YulUtilFunctions::returnDataToArrayFunction()
+{
+	return m_functionCollector->createFunction("returnDataToArrayFn", [&]() {
+		return !m_evmVersion.supportsReturndata()
+			? "return "s + to_string(CompilerUtils::zeroPointer)
+			: R"(
+				let v := returndatasize()
+				switch v
+				case 0 {
+					v := 0x60
+				}
+				default {
+					v := mload(0x40)
+					mstore(0x40, add(v, and(add(returndatasize(), 0x3f), not(0x1f))))
+					mstore(v, returndatasize())
+					returndatacopy(add(v, 0x20), 0, returndatasize())
+				}
+			)"s;
+	});
+}

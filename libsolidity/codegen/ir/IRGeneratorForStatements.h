@@ -66,6 +66,10 @@ public:
 	void endVisit(Identifier const& _identifier) override;
 	bool visit(Literal const& _literal) override;
 
+	bool visit(TryStatement const& _node) override;
+	void handleCatch(std::vector<ASTPointer<TryCatchClause>> const& _catchClauses);
+	void handleCatchFallback(ASTPointer<TryCatchClause> _fallback);
+
 private:
 	/// Appends code to call an external function with the given arguments.
 	/// All involved expressions have already been visited.

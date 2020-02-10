@@ -100,6 +100,8 @@ public:
 
 	RevertStrings revertStrings() const { return m_revertStrings; }
 
+	std::string trySuccessConditionVariable(Expression const& _expression) const;
+
 private:
 	langutil::EVMVersion m_evmVersion;
 	RevertStrings m_revertStrings;
