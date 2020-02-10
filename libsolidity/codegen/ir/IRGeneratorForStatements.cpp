@@ -1188,7 +1188,13 @@ void IRGeneratorForStatements::appendExternalFunctionCall(
 		mstore(<pos>, <shl28>(<funId>))
 		let <end> := <encodeArgs>(add(<pos>, 4) <argumentString>)
 
-		let <result> := <call>(<gas>, <address>, <?hasValue> <value>, </hasValue> <pos>, sub(<end>, <pos>), <pos>, <reservedReturnSize>)
+		let <result> := <call>(<gas>, <address>, <?hasValue> <value>, </hasValue> <pos>, sub(<end>, <pos>), <pos>,
+			<?dynamicReturnSize>
+				0
+			<!dynamicReturnSize>
+				<reservedReturnSize>
+			</dynamicReturnSize>
+		)
 		if iszero(<result>) { <forwardingRevert>() }
 
 		<?dynamicReturnSize>
@@ -1224,6 +1230,11 @@ void IRGeneratorForStatements::appendExternalFunctionCall(
 	// Output data will replace input data, unless we have ECRecover (then, output
 	// area will be 32 bytes just before input area).
 	solUnimplementedAssert(funKind != FunctionType::Kind::ECRecover, "");
+
+	if (dynamicReturnSize)
+		templ("retSize", "returndatasize()");
+	else
+		templ("retSize", to_string(estimatedReturnSize));
 
 	if (isDelegateCall)
 	{
