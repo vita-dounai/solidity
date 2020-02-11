@@ -19,3 +19,4 @@ contract c {
 // ----
 // Warning: (101-106): Overflow (resulting value larger than 2**256 - 1) happens here
 // Warning: (202-218): Assertion violation happens here
+// Warning: (242-252): Assertion violation happens here

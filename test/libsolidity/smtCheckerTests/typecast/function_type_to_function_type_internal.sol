@@ -15,7 +15,9 @@ contract C {
 // Warning: (222-226): Assertion checker does not yet implement this type of function call.
 // Warning: (238-244): Assertion checker does not yet implement the type function (uint256) returns (uint256) for comparisons
 // Warning: (207-227): Assertion violation happens here
+// Warning: (231-245): Assertion violation happens here
 // Warning: (214-218): Assertion checker does not yet implement this type of function call.
 // Warning: (222-226): Assertion checker does not yet implement this type of function call.
 // Warning: (238-244): Assertion checker does not yet implement the type function (uint256) returns (uint256) for comparisons
 // Warning: (207-227): Assertion violation happens here
+// Warning: (231-245): Assertion violation happens here

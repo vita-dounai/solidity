@@ -15,3 +15,4 @@ contract C
 }
 // ----
 // Warning: (228-246): Assertion violation happens here
+// Warning: (293-310): Assertion violation happens here
