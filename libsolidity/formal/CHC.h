@@ -86,14 +86,20 @@ private:
 	void clearIndices(ContractDefinition const* _contract, FunctionDefinition const* _function = nullptr) override;
 	bool shouldVisit(FunctionDefinition const& _function) const;
 	void setCurrentBlock(smt::SymbolicFunctionVariable const& _block, std::vector<smt::Expression> const* _arguments = nullptr);
+	std::vector<VariableDeclaration const*> stateVariablesIncludingInheritedAndPrivate(ContractDefinition const& _contract) const;
 	//@}
 
 	/// Sort helpers.
 	//@{
+	std::vector<smt::SortPointer> stateSorts(ContractDefinition const& _contract);
 	smt::SortPointer constructorSort();
 	smt::SortPointer interfaceSort();
+	smt::SortPointer interfaceSort(ContractDefinition const& _const);
 	smt::SortPointer sort(FunctionDefinition const& _function);
 	smt::SortPointer sort(ASTNode const* _block);
+	// Sort for function calls. This is:
+	// (stateVarsSorts inputSorts outputSorts stateVarSorts)
+	smt::SortPointer summarySort(FunctionDefinition const& _function, ContractDefinition const& _contract);
 	//@}
 
 	/// Predicate helpers.
@@ -101,14 +107,20 @@ private:
 	/// @returns a new block of given _sort and _name.
 	std::unique_ptr<smt::SymbolicFunctionVariable> createSymbolicBlock(smt::SortPointer _sort, std::string const& _name);
 
+	/// Genesis predicate.
+	smt::Expression genesis() { return (*m_genesisPredicate)({}); }
 	/// Interface predicate over current variables.
 	smt::Expression interface();
+	smt::Expression interface(ContractDefinition const& _contract);
 	/// Error predicate over current variables.
 	smt::Expression error();
 	smt::Expression error(unsigned _idx);
 
 	/// Creates a block for the given _node.
 	std::unique_ptr<smt::SymbolicFunctionVariable> createBlock(ASTNode const* _node, std::string const& _prefix = "");
+	/// Creates a call block for the given function _function from contract _contract.
+	/// The contract is needed here because of inheritance.
+	std::unique_ptr<smt::SymbolicFunctionVariable> createSummaryBlock(FunctionDefinition const& _function, ContractDefinition const& _contract);
 
 	/// Creates a new error block to be used by an assertion.
 	/// Also registers the predicate.
@@ -116,6 +128,11 @@ private:
 
 	void connectBlocks(smt::Expression const& _from, smt::Expression const& _to, smt::Expression const& _constraints = smt::Expression(true));
 
+	/// @returns the symbolic values of the state variables at the beginning
+	/// of the current transaction.
+	std::vector<smt::Expression> initialStateVariables();
+	std::vector<smt::Expression> stateVariablesAtIndex(int _index);
+	std::vector<smt::Expression> stateVariablesAtIndex(int _index, ContractDefinition const& _contract);
 	/// @returns the current symbolic values of the current state variables.
 	std::vector<smt::Expression> currentStateVariables();
 
@@ -127,11 +144,15 @@ private:
 	std::vector<smt::Expression> currentBlockVariables();
 
 	/// @returns the predicate name for a given node.
-	std::string predicateName(ASTNode const* _node);
+	std::string predicateName(ASTNode const* _node, ContractDefinition const* _contract = nullptr);
 	/// @returns a predicate application over the current scoped variables.
 	smt::Expression predicate(smt::SymbolicFunctionVariable const& _block);
 	/// @returns a predicate application over @param _arguments.
 	smt::Expression predicate(smt::SymbolicFunctionVariable const& _block, std::vector<smt::Expression> const& _arguments);
+	/// @returns a predicate that defines a constructor summary.
+	smt::Expression summary(ContractDefinition const& _contract);
+	/// @returns a predicate that defines a function summary.
+	smt::Expression summary(FunctionDefinition const& _function);
 	//@}
 
 	/// Solver related.
@@ -165,6 +186,16 @@ private:
 	/// Artificial Error predicate.
 	/// Single error block for all assertions.
 	std::unique_ptr<smt::SymbolicFunctionVariable> m_errorPredicate;
+
+	/// Function predicates.
+	std::map<ContractDefinition const*, std::map<FunctionDefinition const*, std::unique_ptr<smt::SymbolicFunctionVariable>>> m_summaries;
+
+	smt::SymbolicIntVariable m_error{
+		TypeProvider::uint256(),
+		TypeProvider::uint256(),
+		"error",
+		m_context
+	};
 	//@}
 
 	/// Variables.
