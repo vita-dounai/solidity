@@ -10,6 +10,7 @@ Compiler Features:
  * AST: Add a new node for doxygen-style, structured documentation that can be received by contract, function, event and modifier definitions.
  * Debug: Provide reason strings for compiler-generated internal reverts when using the ``--revert-strings`` option or the ``settings.debug.revertStrings`` setting on ``debug`` mode.
  * Yul Optimizer: Prune functions that call each other but are otherwise unreferenced.
+ * SMTChecker: CHC support to internal function calls.
 
 
 Bugfixes:
