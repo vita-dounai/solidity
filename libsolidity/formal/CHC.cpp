@@ -467,6 +467,8 @@ void CHC::endVisit(FunctionCall const& _funCall)
 		SMTEncoder::endVisit(_funCall);
 		break;
 	case FunctionType::Kind::Internal:
+		internalFunctionCall(_funCall);
+		break;
 	case FunctionType::Kind::External:
 	case FunctionType::Kind::DelegateCall:
 	case FunctionType::Kind::BareCall:
@@ -935,6 +937,36 @@ smt::Expression CHC::predicate(
 )
 {
 	return _block(_arguments);
+}
+
+smt::Expression CHC::predicate(FunctionCall const& _funCall)
+{
+	auto const* function = functionCallToDefinition(_funCall);
+	if (!function)
+		return smt::Expression(true);
+
+	m_error.increaseIndex();
+	vector<smt::Expression> args{m_error.currentValue()};
+	auto const* contract = dynamic_cast<ContractDefinition const*>(function->scope());
+	solAssert(contract, "");
+
+	bool otherContract = contract != m_currentContract && contract->contractKind() == ContractKind::Library;
+	args += otherContract ? stateVariablesAtIndex(0, *contract) : currentStateVariables();
+	args += symbolicArguments(_funCall);
+	for (auto const& var: m_stateVariables)
+		m_context.variable(*var)->increaseIndex();
+	args += otherContract ? stateVariablesAtIndex(1, *contract) : currentStateVariables();
+
+	auto const& returnParams = function->returnParameters();
+	for (auto param: returnParams)
+		if (m_context.knownVariable(*param))
+			m_context.variable(*param)->increaseIndex();
+		else
+			createVariable(*param);
+	for (auto const& var: function->returnParameters())
+		args.push_back(m_context.variable(*var)->currentValue());
+
+	return (*m_summaries.at(contract).at(function))(args);
 }
 
 void CHC::addRule(smt::Expression const& _rule, string const& _ruleName)
