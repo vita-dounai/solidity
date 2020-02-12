@@ -12,5 +12,8 @@ contract Simple {
 		assert(y == x);
 	}
 }
-// ====
-// SMTSolvers: z3
+// ----
+// Warning: (164-179): Error trying to invoke SMT solver.
+// Warning: (187-201): Error trying to invoke SMT solver.
+// Warning: (164-179): Assertion violation happens here
+// Warning: (187-201): Assertion violation happens here
